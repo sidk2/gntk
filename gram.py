@@ -1,3 +1,4 @@
+import scipy.sparse
 import util
 import time
 import numpy as np
@@ -22,6 +23,8 @@ parser.add_argument('--jk', type=int, default=1,
 						help='whether to add jk')
 parser.add_argument('--out_dir', type=str, default="out",
                     help='output directory')
+parser.add_argument('--diff_kern_k', type=int, default=5, help='diffusion kernel k value')
+
 args = parser.parse_args()
 
 if args.dataset in ['IMDBBINARY', 'COLLAB', 'IMDBMULTI', 'COLLAB']:
@@ -30,6 +33,8 @@ if args.dataset in ['IMDBBINARY', 'COLLAB', 'IMDBMULTI', 'COLLAB']:
 elif args.dataset in ['MUTAG', 'PROTEINS', 'PTC', 'NCI1']:
     # bioinformatics
     degree_as_tag = False
+    
+k = args.diff_kern_k
     
 graphs, _  = util.load_data(args.dataset, degree_as_tag)
 labels = np.array([g.label for g in graphs]).astype(int)
@@ -54,9 +59,24 @@ for i in range(len(graphs)):
     diag = gntk.diag(graphs[i], A_list[i])
     diag_list.append(diag)
 
+def compute_kern(A):
+    t = np.zeros(A.shape)
+    t = scipy.sparse.coo_matrix(t)
+    
+    last_adj = scipy.sparse.identity(t.shape[0])
+    
+    for i in range(k+1):
+        t += last_adj
+        last_adj = last_adj @ A
+        
+    return t
+        
 
-def calc(T):
-    return gntk.gntk(graphs[T[0]], graphs[T[1]], diag_list[T[0]], diag_list[T[1]], A_list[T[0]], A_list[T[1]])
+def calc(T, use_k = False):
+    adj_0 = A_list[T[0]] if not use_k else compute_kern(A_list[T[0]])
+    adj_1 = A_list[T[1]] if not use_k else compute_kern(A_list[T[1]])
+    
+    return gntk.gntk(graphs[T[0]], graphs[T[1]], diag_list[T[0]], diag_list[T[1]], adj_0, adj_1)
 
 calc_list = [(i, j) for i in range(len(graphs)) for j in range(i, len(graphs))]
 
