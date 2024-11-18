@@ -23,6 +23,7 @@ parser.add_argument('--jk', type=int, default=1,
 						help='whether to add jk')
 parser.add_argument('--out_dir', type=str, default="out",
                     help='output directory')
+parser.add_argument('--use_diff_kern', type=bool, default=False)
 parser.add_argument('--diff_kern_k', type=int, default=5, help='diffusion kernel k value')
 
 args = parser.parse_args()
@@ -34,6 +35,8 @@ elif args.dataset in ['MUTAG', 'PROTEINS', 'PTC', 'NCI1']:
     # bioinformatics
     degree_as_tag = False
     
+    
+use_k = args.use_diff_kern
 k = args.diff_kern_k
     
 graphs, _  = util.load_data(args.dataset, degree_as_tag)
@@ -72,7 +75,7 @@ def compute_kern(A):
     return t
         
 
-def calc(T, use_k = False):
+def calc(T):
     adj_0 = A_list[T[0]] if not use_k else compute_kern(A_list[T[0]])
     adj_1 = A_list[T[1]] if not use_k else compute_kern(A_list[T[1]])
     
