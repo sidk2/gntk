@@ -15,6 +15,7 @@ from types import SimpleNamespace
 import torch
 import torch.nn.functional as F
 
+num_classes = {"Cora" : 7, "CiteSeer" : 6, "PubMed" : 3}
 def parse_arguments():
     parser = argparse.ArgumentParser(description='GNTK computation')
     parser.add_argument('--dataset', type=str, default="Cora",
@@ -33,9 +34,9 @@ def parse_arguments():
     parser.add_argument('--diff_kern_k', type=int, default=5, help='diffusion kernel k value')
     return parser.parse_args()
 
-def one_hot_encode(numbers):
+def one_hot_encode(numbers, num_classes):
     n = len(numbers)
-    one_hot = np.zeros((n, 7), dtype=int)  # Initialize n x 7 matrix with zeros
+    one_hot = np.zeros((n, num_classes), dtype=int)  # Initialize n x 7 matrix with zeros
     for i, j in enumerate(numbers):
         one_hot[i,j] = 1
     return one_hot
@@ -52,7 +53,7 @@ def main():
     dataset = Planetoid(path, args.dataset, split='full', transform=T.NormalizeFeatures())
 
     all_labels = dataset[0].y.numpy().astype(int)
-    one_hot_labs = one_hot_encode(all_labels)
+    one_hot_labs = one_hot_encode(all_labels, num_classes=num_classes[args.dataset])
     n = all_labels.shape[0]
 
     #Processing adjacency into scipy sparse coo format
@@ -93,11 +94,9 @@ def main():
         H_inverse = np.linalg.inv(H)
     
     kdotHinv = np.dot(ntk[test][:,train], H_inverse)
-    print(kdotHinv.shape)
 
     preds = torch.Tensor(np.dot(kdotHinv, y))
     
-    print(preds.shape)
     probs = F.softmax(preds, dim=1)
     preds = np.argmax(probs.numpy(), axis=1)
     print(np.mean((preds - all_labels[test]) == 0))
