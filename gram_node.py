@@ -12,6 +12,9 @@ import torch_geometric.transforms as T
 from torch_geometric.datasets import Planetoid
 from types import SimpleNamespace
 
+import torch
+import torch.nn.functional as F
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description='GNTK computation')
     parser.add_argument('--dataset', type=str, default="Cora",
@@ -30,6 +33,13 @@ def parse_arguments():
     parser.add_argument('--diff_kern_k', type=int, default=5, help='diffusion kernel k value')
     return parser.parse_args()
 
+def one_hot_encode(numbers):
+    n = len(numbers)
+    one_hot = np.zeros((n, 7), dtype=int)  # Initialize n x 7 matrix with zeros
+    for i, j in enumerate(numbers):
+        one_hot[i,j] = 1
+    return one_hot
+
 def main():
     args = parse_arguments()
     use_k = args.use_diff_kern
@@ -38,9 +48,11 @@ def main():
     gntk = GNTK(num_layers=args.num_layers, num_mlp_layers=args.num_mlp_layers, jk=args.jk, scale=args.scale, task='node')
 
     path = os.path.join(os.path.dirname(os.path.abspath('')), '..', 'data', 'Planetoid')
+    # path = '/home/sid/gntk/data'
     dataset = Planetoid(path, args.dataset, split='full', transform=T.NormalizeFeatures())
 
     all_labels = dataset[0].y.numpy().astype(int)
+    one_hot_labs = one_hot_encode(all_labels)
     n = all_labels.shape[0]
 
     #Processing adjacency into scipy sparse coo format
@@ -69,17 +81,26 @@ def main():
     train = dataset[0].train_mask
     test = dataset[0].test_mask
 
-    y = all_labels[train]
+    y = one_hot_labs[train, :]
 
     H = ntk[train][:, train]
-    H_inverse = np.linalg.inv(H)
-
+    
+    if np.linalg.cond(H) > 1e6:
+        U, S, Vt = np.linalg.svd(H)
+        S_inv = np.diag(1 / S)
+        H_inverse = Vt.T @ S_inv @ U.T
+    else:
+        H_inverse = np.linalg.inv(H)
+    
     kdotHinv = np.dot(ntk[test][:,train], H_inverse)
+    print(kdotHinv.shape)
 
-    preds = np.dot(kdotHinv, y)
-
-    print("Preds according to kernel regression from Arora paper (this doesn't seem to be working)")
-    print(preds)
+    preds = torch.Tensor(np.dot(kdotHinv, y))
+    
+    print(preds.shape)
+    probs = F.softmax(preds, dim=1)
+    preds = np.argmax(probs.numpy(), axis=1)
+    print(np.mean((preds - all_labels[test]) == 0))
 
     os.makedirs(args.out_dir, exist_ok=True)
     np.save(join(args.out_dir, 'ntk'), ntk)
