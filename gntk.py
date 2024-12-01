@@ -6,7 +6,7 @@ class GNTK(object):
     """
     implement the Graph Neural Tangent Kernel
     """
-    def __init__(self, num_layers, num_mlp_layers, jk, scale):
+    def __init__(self, num_layers, num_mlp_layers, jk, scale, task='graph'):
         """
         num_layers: number of layers in the neural networks (including the input layer)
         num_mlp_layers: number of MLP layers
@@ -18,6 +18,8 @@ class GNTK(object):
         self.jk = jk
         self.scale = scale
         assert(scale in ['uniform', 'degree'])
+        self.task = task
+        assert(task in ['graph', 'node'])
     
     def __next_diag(self, S):
         """
@@ -128,7 +130,14 @@ class GNTK(object):
             if layer != self.num_layers - 1:
                 sigma = self.__adj(sigma, adj_block, n1, n2, scale_mat)
                 ntk = self.__adj(ntk, adj_block, n1, n2, scale_mat)
-        if self.jk:
-            return np.sum(jump_ntk) * 2
-        else:
-            return np.sum(ntk) * 2
+        if self.task == 'graph':
+            if self.jk:
+                return np.sum(jump_ntk) * 2
+            else:
+                return np.sum(ntk) * 2
+        elif self.task == 'node':
+            #Should this still be multiplied by 2? I don't know
+            if self.jk:
+                return jump_ntk * 2
+            else:
+                return ntk * 2
