@@ -8,14 +8,14 @@ import argparse
 import os
 from multiprocessing import Pool
 from gntk import GNTK
-import torch_geometric.transforms as T
+import torch_geometric.transforms as Transform
 from torch_geometric.datasets import Planetoid
 from types import SimpleNamespace
 
 import torch
 import torch.nn.functional as F
 
-num_classes = {"Cora" : 7, "CiteSeer" : 6, "PubMed" : 3}
+num_classes = {"Cora" : 7, "Citeseer" : 6, "Pubmed" : 3}
 def parse_arguments():
     parser = argparse.ArgumentParser(description='GNTK computation')
     parser.add_argument('--dataset', type=str, default="Cora",
@@ -30,8 +30,7 @@ def parse_arguments():
                         help='whether to add jk')
     parser.add_argument('--out_dir', type=str, default="out",
                         help='output directory')
-    parser.add_argument('--use_diff_kern', type=bool, default=False)
-    parser.add_argument('--diff_kern_k', type=int, default=5, help='diffusion kernel k value')
+    parser.add_argument('--type', type=str, default='GCN', help='GCN or SSGC')
     return parser.parse_args()
 
 def one_hot_encode(numbers, num_classes):
@@ -43,14 +42,11 @@ def one_hot_encode(numbers, num_classes):
 
 def main():
     args = parse_arguments()
-    use_k = args.use_diff_kern
-    k = args.diff_kern_k
+    type = args.type
 
-    gntk = GNTK(num_layers=args.num_layers, num_mlp_layers=args.num_mlp_layers, jk=args.jk, scale=args.scale, task='node')
-
-    path = os.path.join(os.path.dirname(os.path.abspath('')), '..', 'data', 'Planetoid')
-    # path = '/home/sid/gntk/data'
-    dataset = Planetoid(path, args.dataset, split='full', transform=T.NormalizeFeatures())
+    # path = os.path.join(os.path.dirname(os.path.abspath('')), '..', 'data', 'Planetoid')
+    path = '/home/sid/gntk/data'
+    dataset = Planetoid(path, args.dataset, split='full', transform=Transform.NormalizeFeatures())
 
     all_labels = dataset[0].y.numpy().astype(int)
     one_hot_labs = one_hot_encode(all_labels, num_classes=num_classes[args.dataset])
@@ -64,10 +60,19 @@ def main():
     #If the dataset has edge weights, this will need to be changed. I don't think Core, CiteSeer, or PubMed does though
     data = np.ones(edge_index.size(1))
 
-    A = scipy.sparse.coo_matrix((data, (row, col)), shape=(n, n), dtype=np.float32)
+    A = scipy.sparse.csr_matrix((data, (row, col)), shape=(n, n), dtype=np.uint8)
 
     #This is adding self loops. I don't think A.T needs to be added like in the original prepare graphs function
     A = A + scipy.sparse.identity(n)
+
+    if type == "SSGC":
+        T = scipy.sparse.linalg.matrix_power(A, 0)
+        for i in range(1, args.num_layers + 1):
+            T = T + scipy.sparse.linalg.matrix_power(A, i)
+        # A = T / args.num_layers
+        gntk = GNTK(num_layers=1, num_mlp_layers=args.num_mlp_layers, jk=args.jk, scale=args.scale, task='node')
+    else:
+        gntk = GNTK(num_layers=args.num_layers, num_mlp_layers=args.num_mlp_layers, jk=args.jk, scale=args.scale, task='node')
 
     node_features = dataset[0].x.numpy()
     #Wrapper for the node features, so they can be accessed as g.node_features
@@ -76,8 +81,7 @@ def main():
     diag = gntk.diag(graph, A)
     
     ntk = gntk.gntk(graph, graph, diag, diag, A, A)
-    print("NTK: ")
-    print(ntk)
+
 
     train = dataset[0].train_mask
     test = dataset[0].test_mask
@@ -106,5 +110,4 @@ def main():
     np.save(join(args.out_dir, 'preds'), preds)
 
 if __name__ == "__main__":
-    print("running")
     main()
