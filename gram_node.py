@@ -8,7 +8,7 @@ import argparse
 import os
 from multiprocessing import Pool
 from gntk import GNTK
-import torch_geometric.transforms as T
+import torch_geometric.transforms as Transform
 from torch_geometric.datasets import Planetoid
 from types import SimpleNamespace
 
@@ -32,6 +32,7 @@ def parse_arguments():
                         help='output directory')
     parser.add_argument('--use_diff_kern', type=bool, default=False)
     parser.add_argument('--diff_kern_k', type=int, default=5, help='diffusion kernel k value')
+    parser.add_argument('--type', type=str, default='GCN', help='GCN or SSGC')
     return parser.parse_args()
 
 def one_hot_encode(numbers, num_classes):
@@ -45,12 +46,11 @@ def main():
     args = parse_arguments()
     use_k = args.use_diff_kern
     k = args.diff_kern_k
-
-    gntk = GNTK(num_layers=args.num_layers, num_mlp_layers=args.num_mlp_layers, jk=args.jk, scale=args.scale, task='node')
+    type = args.type
 
     path = os.path.join(os.path.dirname(os.path.abspath('')), '..', 'data', 'Planetoid')
     # path = '/home/sid/gntk/data'
-    dataset = Planetoid(path, args.dataset, split='full', transform=T.NormalizeFeatures())
+    dataset = Planetoid(path, args.dataset, split='full', transform=Transform.NormalizeFeatures())
 
     all_labels = dataset[0].y.numpy().astype(int)
     one_hot_labs = one_hot_encode(all_labels, num_classes=num_classes[args.dataset])
@@ -68,6 +68,15 @@ def main():
 
     #This is adding self loops. I don't think A.T needs to be added like in the original prepare graphs function
     A = A + scipy.sparse.identity(n)
+
+    if type == "SSGC":
+        T = scipy.sparse.linalg.matrix_power(A, 0)
+        for i in range(1, args.num_layers + 1):
+            T = T + scipy.sparse.linalg.matrix_power(A, i)
+        A = T / args.num_layers
+        gntk = GNTK(num_layers=1, num_mlp_layers=args.num_mlp_layers, jk=args.jk, scale=args.scale, task='node')
+    else:
+        gntk = GNTK(num_layers=args.num_layers, num_mlp_layers=args.num_mlp_layers, jk=args.jk, scale=args.scale, task='node')
 
     node_features = dataset[0].x.numpy()
     #Wrapper for the node features, so they can be accessed as g.node_features
