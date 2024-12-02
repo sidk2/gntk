@@ -75,6 +75,7 @@ class GNTK(object):
             scale_mat = 1. / np.array(np.sum(A, axis=1) * np.sum(A, axis=0))
 
         diag_list = []
+        A = A.astype(np.int8)
         adj_block = sp.sparse.kron(A, A)
 
         # input covariance
@@ -111,6 +112,8 @@ class GNTK(object):
         else:
             scale_mat = 1. / np.array(np.sum(A1, axis=1) * np.sum(A2, axis=0))
         
+        A1 = A1.astype(np.uint8)
+        A2 = A2.astype(np.uint8)
         adj_block = sp.sparse.kron(A1, A2)
         
         jump_ntk = 0
