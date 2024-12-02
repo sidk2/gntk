@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import scipy as sp
+import time
 
 class GNTK(object):
     """
@@ -43,7 +44,13 @@ class GNTK(object):
         N: number of vertices
         scale_mat: scaling matrix
         """
-        return adj_block.dot(S.reshape(-1)).reshape(N, N) * scale_mat
+        adj_block = adj_block.tocoo()
+        res = np.zeros((N*N, 1))
+        for r, c, v in zip(adj_block.row, adj_block.col, adj_block.data):
+            kron_entry = v*adj_block @ S[r]
+            res[c*N:(c+1)*N] += kron_entry.reshape((N,1))
+        return res.reshape(N, N) * scale_mat
+      
 
     def __next(self, S, diag1, diag2):
         """
@@ -60,7 +67,13 @@ class GNTK(object):
         """
         go through one adj layer, for all elements
         """
-        return adj_block.dot(S.reshape(-1)).reshape(N1, N2) * scale_mat
+        # For now, assuming N1 = N2
+        adj_block = adj_block.tocoo()
+        res = np.zeros((N1*N1, 1))
+        for r, c, v in zip(adj_block.row, adj_block.col, adj_block.data):
+            kron_entry = v*adj_block @ S[r]
+            res[c*N1:(c+1)*N1] += kron_entry.reshape((N1,1))
+        return res.reshape(N1, N1) * scale_mat
       
     def diag(self, g, A):
         """
@@ -75,12 +88,10 @@ class GNTK(object):
             scale_mat = 1. / np.array(np.sum(A, axis=1) * np.sum(A, axis=0))
 
         diag_list = []
-        A = A.astype(np.int8)
-        adj_block = sp.sparse.kron(A, A)
 
         # input covariance
         sigma = np.matmul(g.node_features, g.node_features.T)
-        sigma = self.__adj_diag(sigma, adj_block, N, scale_mat)
+        sigma = self.__adj_diag(sigma, A, N, scale_mat)
         ntk = np.copy(sigma)
 		
         
@@ -91,8 +102,8 @@ class GNTK(object):
                 ntk = ntk * dot_sigma + sigma
             # if not last layer
             if layer != self.num_layers - 1:
-                sigma = self.__adj_diag(sigma, adj_block, N, scale_mat)
-                ntk = self.__adj_diag(ntk, adj_block, N, scale_mat)
+                sigma = self.__adj_diag(sigma, A, N, scale_mat)
+                ntk = self.__adj_diag(ntk, A, N, scale_mat)
         return diag_list
 
     def gntk(self, g1, g2, diag_list1, diag_list2, A1, A2):
@@ -114,12 +125,12 @@ class GNTK(object):
         
         A1 = A1.astype(np.uint8)
         A2 = A2.astype(np.uint8)
-        adj_block = sp.sparse.kron(A1, A2)
+        # adj_block = sp.sparse.kron(A1, A2)
         
         jump_ntk = 0
         sigma = np.matmul(g1.node_features, g2.node_features.T)
         jump_ntk += sigma
-        sigma = self.__adj(sigma, adj_block, n1, n2, scale_mat)
+        sigma = self.__adj(sigma, A1, n1, n2, scale_mat)
         ntk = np.copy(sigma)
         
         for layer in range(1, self.num_layers):
@@ -131,8 +142,8 @@ class GNTK(object):
             jump_ntk += ntk
             # if not last layer
             if layer != self.num_layers - 1:
-                sigma = self.__adj(sigma, adj_block, n1, n2, scale_mat)
-                ntk = self.__adj(ntk, adj_block, n1, n2, scale_mat)
+                sigma = self.__adj(sigma, A1, n1, n2, scale_mat)
+                ntk = self.__adj(ntk, A1, n1, n2, scale_mat)
         if self.task == 'graph':
             if self.jk:
                 return np.sum(jump_ntk) * 2
