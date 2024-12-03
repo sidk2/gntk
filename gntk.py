@@ -7,7 +7,7 @@ class GNTK(object):
     """
     implement the Graph Neural Tangent Kernel
     """
-    def __init__(self, num_layers, num_mlp_layers, jk, scale, task='graph'):
+    def __init__(self, num_layers, num_mlp_layers, jk, scale, task='graph', skip_pc = False):
         """
         num_layers: number of layers in the neural networks (including the input layer)
         num_mlp_layers: number of MLP layers
@@ -21,6 +21,7 @@ class GNTK(object):
         assert(scale in ['uniform', 'degree'])
         self.task = task
         assert(task in ['graph', 'node'])
+        self.skip_pc = skip_pc
     
     def __next_diag(self, S):
         """
@@ -50,7 +51,6 @@ class GNTK(object):
             kron_entry = v*adj_block @ S[r]
             res[c*N:(c+1)*N] += kron_entry.reshape((N,1))
         return res.reshape(N, N) * scale_mat
-      
 
     def __next(self, S, diag1, diag2):
         """
@@ -114,7 +114,7 @@ class GNTK(object):
         diag_list1, diag_list2: g1, g2's the diagonal elements of covariance matrix in all layers
         A1, A2: g1, g2's adjacency matrix
         """
-        
+
         n1 = A1.shape[0]
         n2 = A2.shape[0]
         
@@ -143,6 +143,9 @@ class GNTK(object):
             # if not last layer
             if layer != self.num_layers - 1:
                 sigma = self.__adj(sigma, A1, n1, n2, scale_mat)
+                #Skip connection is slightly different from paper 
+                if(layer == 1): sigma1 = np.copy(sigma)
+                if(self.skip_pc and layer != 1): sigma += sigma1
                 ntk = self.__adj(ntk, A1, n1, n2, scale_mat)
         if self.task == 'graph':
             if self.jk:

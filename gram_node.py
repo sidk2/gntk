@@ -31,6 +31,7 @@ def parse_arguments():
     parser.add_argument('--out_dir', type=str, default="out",
                         help='output directory')
     parser.add_argument('--type', type=str, default='GCN', help='GCN or SSGC')
+    parser.add_argument('--skip', type=int, default=0, help='whether to add skip pc')
     return parser.parse_args()
 
 def one_hot_encode(numbers, num_classes):
@@ -43,8 +44,6 @@ def one_hot_encode(numbers, num_classes):
 def main():
     args = parse_arguments()
 
-    use_k = args.use_diff_kern
-    k = args.diff_kern_k
     type = args.type
 
     path = os.path.join(os.path.dirname(os.path.abspath('')), '..', 'data', 'Planetoid')
@@ -76,16 +75,17 @@ def main():
 
         A = T / args.num_layers
 
-        gntk = GNTK(num_layers=1, num_mlp_layers=args.num_mlp_layers, jk=args.jk, scale=args.scale, task='node')
+        gntk = GNTK(num_layers=1, num_mlp_layers=args.num_mlp_layers, jk=args.jk, scale=args.scale, task='node', skip_pc=args.skip)
     else:
-        gntk = GNTK(num_layers=args.num_layers, num_mlp_layers=args.num_mlp_layers, jk=args.jk, scale=args.scale, task='node')
+        gntk = GNTK(num_layers=args.num_layers, num_mlp_layers=args.num_mlp_layers, jk=args.jk, scale=args.scale, task='node', skip_pc=args.skip)
+
 
     node_features = dataset[0].x.numpy()
     #Wrapper for the node features, so they can be accessed as g.node_features
     graph = SimpleNamespace(node_features=node_features)
 
     diag = gntk.diag(graph, A)
-    
+
     ntk = gntk.gntk(graph, graph, diag, diag, A, A)
 
 
