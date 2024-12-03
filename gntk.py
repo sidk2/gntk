@@ -2,6 +2,7 @@ import math
 import numpy as np
 import scipy as sp
 import time
+import torch
 
 class GNTK(object):
     """
@@ -45,12 +46,16 @@ class GNTK(object):
         N: number of vertices
         scale_mat: scaling matrix
         """
+        S = torch.Tensor(S).cuda()
         adj_block = adj_block.tocoo()
-        res = np.zeros((N*N, 1))
+        adj_use = torch.Tensor(adj_block.toarray()).cuda()
+        res = torch.zeros((N*N, 1)).cuda()
         for r, c, v in zip(adj_block.row, adj_block.col, adj_block.data):
-            kron_entry = v*adj_block @ S[r]
+            kron_entry = v*adj_use @ S[r]
             res[c*N:(c+1)*N] += kron_entry.reshape((N,1))
-        return res.reshape(N, N) * scale_mat
+        
+        return res.cpu().numpy().reshape(N, N) * scale_mat
+      
 
     def __next(self, S, diag1, diag2):
         """
@@ -68,12 +73,15 @@ class GNTK(object):
         go through one adj layer, for all elements
         """
         # For now, assuming N1 = N2
+        S = torch.Tensor(S).cuda()
         adj_block = adj_block.tocoo()
-        res = np.zeros((N1*N1, 1))
+        adj_use = torch.Tensor(adj_block.toarray()).cuda()
+        res = torch.zeros((N1*N1, 1)).cuda()
         for r, c, v in zip(adj_block.row, adj_block.col, adj_block.data):
-            kron_entry = v*adj_block @ S[r]
+            kron_entry = v*adj_use @ S[r]
             res[c*N1:(c+1)*N1] += kron_entry.reshape((N1,1))
-        return res.reshape(N1, N1) * scale_mat
+        
+        return res.cpu().numpy().reshape(N1, N1) * scale_mat
       
     def diag(self, g, A):
         """

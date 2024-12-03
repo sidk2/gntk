@@ -74,8 +74,7 @@ def main():
             T = T + scipy.sparse.linalg.matrix_power(A, i)
 
         A = T / args.num_layers
-
-        gntk = GNTK(num_layers=1, num_mlp_layers=args.num_mlp_layers, jk=args.jk, scale=args.scale, task='node', skip_pc=args.skip)
+        gntk = GNTK(num_layers=2, num_mlp_layers=args.num_mlp_layers, jk=args.jk, scale=args.scale, task='node')
     else:
         gntk = GNTK(num_layers=args.num_layers, num_mlp_layers=args.num_mlp_layers, jk=args.jk, scale=args.scale, task='node', skip_pc=args.skip)
 
