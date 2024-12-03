@@ -64,17 +64,17 @@ def main():
     #If the dataset has edge weights, this will need to be changed. I don't think Core, CiteSeer, or PubMed does though
     data = np.ones(edge_index.size(1))
 
-    A = scipy.sparse.csr_matrix((data, (row, col)), shape=(n, n), dtype=np.uint8)
+    A = scipy.sparse.coo_matrix((data, (row, col)), shape=(n, n))
 
     #This is adding self loops. I don't think A.T needs to be added like in the original prepare graphs function
-    A = A + scipy.sparse.identity(n)
+    A = A + scipy.sparse.identity(n, format='coo')
 
     if type == "SSGC":
         T = scipy.sparse.linalg.matrix_power(A, 0)
         for i in range(1, args.num_layers + 1):
             T = T + scipy.sparse.linalg.matrix_power(A, i)
 
-        A = T
+        A = T / args.num_layers
 
         gntk = GNTK(num_layers=1, num_mlp_layers=args.num_mlp_layers, jk=args.jk, scale=args.scale, task='node')
     else:

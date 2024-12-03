@@ -13,6 +13,7 @@ if __name__=='__main__':
                 print(f"Running on {d} with k={n_block} and {n_mlp} MLP layers")
                 cmd = ['python3', 'gram_node.py', '--dataset', f'{d}', '--num_mlp_layers', f'{n_mlp}', '--num_layers', str(n_block), '--scale', 'degree', '--out_dir', 'out/', '--type', 'SSGC']
                 output = subprocess.run(cmd, capture_output=True, text=True)
-                foo[i, j] = float(output.stdout.strip())
                 print(output.stdout.strip())
+                foo[i, j] = float(output.stdout.strip())
+                
         np.save(f'{d}_s2gc.npy', foo)
