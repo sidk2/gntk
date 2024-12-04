@@ -46,10 +46,10 @@ def main():
 
     type = args.type
 
-    path = os.path.join(os.path.dirname(os.path.abspath('')), '..', 'data', 'Planetoid')
-    # path = '/home/sid/gntk/data'
+    # path = os.path.join(os.path.dirname(os.path.abspath('')), '..', 'data', 'Planetoid')
+    path = '/home/sid/gntk/data'
 
-    dataset = Planetoid(path, args.dataset, split='full', transform=Transform.NormalizeFeatures())
+    dataset = Planetoid(path, args.dataset, split='public', transform=Transform.NormalizeFeatures())
 
     all_labels = dataset[0].y.numpy().astype(int)
     one_hot_labs = one_hot_encode(all_labels, num_classes=num_classes[args.dataset])
@@ -62,12 +62,13 @@ def main():
 
     #If the dataset has edge weights, this will need to be changed. I don't think Core, CiteSeer, or PubMed does though
     data = np.ones(edge_index.size(1))
-
     A = scipy.sparse.coo_matrix((data, (row, col)), shape=(n, n))
 
     #This is adding self loops. I don't think A.T needs to be added like in the original prepare graphs function
     A = A + scipy.sparse.identity(n, format='coo')
-
+    degree_values = 1/np.sqrt(np.array(A.sum(axis=1)).flatten())  # Sum of each row
+    degree_matrix = scipy.sparse.coo_matrix((degree_values, (range(n), range(n))), shape=(n, n))
+    A = degree_matrix @ A @ degree_matrix
     if type == "SSGC":
         T = scipy.sparse.linalg.matrix_power(A, 0)
         for i in range(1, args.num_layers + 1):
