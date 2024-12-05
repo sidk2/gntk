@@ -20,11 +20,11 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='GNTK computation')
     parser.add_argument('--dataset', type=str, default="Cora",
                         help='name of dataset (default: Cora)')
-    parser.add_argument('--num_mlp_layers', type=int, default=2,
+    parser.add_argument('--num_mlp_layers', type=int, default=1,
                         help='number of mlp layers')
     parser.add_argument('--num_layers', type=int, default=2,
                         help='number of layers')
-    parser.add_argument('--scale', type=str, default='degree',
+    parser.add_argument('--scale', type=str, default='uniform',
                         help='scaling methods')
     parser.add_argument('--jk', type=int, default=1,
                         help='whether to add jk')
