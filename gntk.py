@@ -149,8 +149,7 @@ class GNTK(object):
             # if not last layer
             if layer != self.num_layers - 1:
                 sigma = self.__adj(sigma, A1, n1, n2, scale_mat)
-                #Skip connection is slightly different from paper 
-                if(layer == 1): sigma1 = np.copy(sigma)
+                if(self.skip_pc and layer == 1): sigma1 = np.copy(sigma)
                 if(self.skip_pc and layer != 1): sigma += sigma1
                 ntk = self.__adj(ntk, A1, n1, n2, scale_mat)
         if self.task == 'graph':
