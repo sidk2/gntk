@@ -1,6 +1,6 @@
 # Oversmoothing in Graph Neural Networks
 
-This repository contains code for node level GNTK, GNTK with skip connections, SSGC NTK, corresponding neural networks, and code to computer preactivations and plot the spectrum. 
+This repository contains code for node level GNTK, GNTK with skip connections, SSGC NTK, corresponding neural networks, and code to compute preactivations and plot the spectrum. 
 
 This repository forks https://github.com/KangchengHou/gntk, which implements Graph Neural Tangent Kernel (infinitely wide multi-layer GNNs trained by gradient descent), described in the following paper:
 
