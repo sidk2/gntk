@@ -10,6 +10,4 @@ Simon S. Du, Kangcheng Hou, Barnabás Póczos, Ruslan Salakhutdinov, Ruosong Wan
 To reproduce our experiments, run param_sweep_full.py
 Then, create plots with Plots.ipynb
 
-To compute the output distribution for various network widths, run compute_preactivation_dist.py. To compute the 
-
-Add instructions for other stuff.
+To compute the output distribution for various network widths, run compute_preactivation_dist.py.
