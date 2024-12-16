@@ -8,6 +8,7 @@ if __name__=='__main__':
     dataset = ["Citeseer"]
     
     for d in dataset:
+
         foo = np.zeros((len(mlp_layers), len(block_ops)))
         for i, n_mlp in enumerate(mlp_layers):
             for j, n_block in enumerate(block_ops):
@@ -31,7 +32,7 @@ if __name__=='__main__':
                 print("Accuracy: ", output.stdout.strip())
                 foo[i, j] = float(output.stdout.strip())
         np.save(f'GCN_jk_{d}.npy', foo)
-
+        
         foo = np.zeros((len(mlp_layers), len(block_ops)))
         for i, n_mlp in enumerate(mlp_layers):
             for j, n_block in enumerate(block_ops):
@@ -55,3 +56,4 @@ if __name__=='__main__':
                 print("Accuracy: ", output.stdout.strip())
                 foo[i, j] = float(output.stdout.strip())
         np.save(f'SSGC_{d}.npy', foo)
+
