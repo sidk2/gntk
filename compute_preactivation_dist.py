@@ -155,7 +155,7 @@ for i in range(10):
     print(i)
     hidden_width = hiddens[i]
     output_dim = 1
-    num_samples = 10000
+    num_samples = hidden_width * 10
     samples = torch.zeros((num_samples,2708 ))
     inp = data.x.cuda()
     norm_adj = norm_adj.cuda()
@@ -174,10 +174,4 @@ for i in range(10):
     # Step 3: Compute the covariance matrix
     N = samples.size(0)  # Number of samples
     covariance_matrix = torch.mm(centered_samples.T, centered_samples) / (N - 1) / hidden_width
-    print(torch.mean(metr))
-    print(torch.mean(covariance_matrix))
-    print(torch.mean(covariance_matrix - metr))
-    pct_errs.append(torch.mean(covariance_matrix - metr)/torch.mean(metr))
-
-
-print(pct_errs)
+    print(f"Avg. relative error between matrix elements of the analytic and measured covariance, width = {hidden_width}: {torch.mean(torch.abs(covariance_matrix - metr) / torch.abs(metr))}")
